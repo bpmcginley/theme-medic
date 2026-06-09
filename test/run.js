@@ -110,6 +110,16 @@ for (const a of result.apps) {
   if (!knownIds.has(a.appId)) errors.push(`Unexpected detection: ${a.appId} (possible false positive)`);
 }
 
+// --- Activity-signal classification (no install list available) --------------
+const sigScan = scanTheme(assets, { activeAppIds: ["privy"] });
+const sGet = (id) => sigScan.apps.find((a) => a.appId === id);
+if (sGet("privy")?.status !== "active") errors.push("signals: privy should be active");
+if (sGet("loox")?.status !== "stale") errors.push("signals: loox should be stale (no sign of life)");
+if (sGet("klaviyo")?.status !== "stale") errors.push("signals: klaviyo should be stale");
+if (sigScan.totals.apps !== sigScan.apps.filter((a) => a.status !== "active").length) {
+  errors.push("signals: totals must count non-active apps");
+}
+
 console.log("");
 if (errors.length) {
   console.log("❌ ASSERTIONS FAILED:");

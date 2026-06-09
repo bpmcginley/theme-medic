@@ -62,28 +62,43 @@ function findHostReferences(content, host) {
  *        (left alone). Everything else that matches is genuine ghost code. If omitted,
  *        every match is reported as "unknown install state" (still surfaced, lower
  *        confidence) so the engine is useful even without the live install list.
+ * @param {string[]} [opts.activeAppIds]  Signature IDs observed to be ACTIVE via weaker
+ *        signals (script host loading on the live storefront, enabled app-embed block).
+ *        Used when no install list is available: matching apps are "active", the rest
+ *        are "stale" (present in theme, no sign of life — likely ghost, lower
+ *        confidence than a true install-list "ghost").
  * @returns {Object} scan result
  */
 export function scanTheme(assets, opts = {}) {
   const installed = new Set((opts.installedAppHandles ?? []).map((h) => h.toLowerCase()));
   const haveInstallList = Array.isArray(opts.installedAppHandles);
+  const active = new Set((opts.activeAppIds ?? []).map((id) => id.toLowerCase()));
+  const haveActivitySignals = Array.isArray(opts.activeAppIds);
 
   // appId -> aggregated finding
   const byApp = new Map();
 
   function ensureApp(sig) {
     if (!byApp.has(sig.id)) {
-      const installedKnown = haveInstallList;
-      const isInstalled = installed.has(sig.handle.toLowerCase());
+      // status: ghost  = app gone but code remains (actionable, high confidence);
+      //         active = app verified installed or alive (do not remove);
+      //         stale  = no install list, but activity signals show no sign of life
+      //                  (likely ghost, lower confidence);
+      //         unknown = no signals at all.
+      let status;
+      if (haveInstallList) {
+        status = installed.has(sig.handle.toLowerCase()) ? "active" : "ghost";
+      } else if (haveActivitySignals) {
+        status = active.has(sig.id.toLowerCase()) ? "active" : "stale";
+      } else {
+        status = "unknown";
+      }
       byApp.set(sig.id, {
         appId: sig.id,
         app: sig.name,
         handle: sig.handle,
         category: sig.category,
-        // status: ghost = app gone but code remains (actionable);
-        //         active = app still installed (informational, do not remove);
-        //         unknown = no install list provided.
-        status: !installedKnown ? "unknown" : isInstalled ? "active" : "ghost",
+        status,
         findings: [],
         bytes: 0,
         estRequests: 0,
@@ -158,8 +173,8 @@ export function scanTheme(assets, opts = {}) {
 
   const apps = [...byApp.values()];
 
-  // Totals only count actionable ghost code (or unknown when no install list given).
-  const actionable = apps.filter((a) => a.status === "ghost" || a.status === "unknown");
+  // Totals only count actionable code: ghost (confirmed), stale (likely), or unknown.
+  const actionable = apps.filter((a) => a.status !== "active");
   const totals = actionable.reduce(
     (acc, a) => {
       acc.bytes += a.bytes;
