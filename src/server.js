@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { collectMetrics } from "./metrics.js";
 import { attributeResources } from "./attribute.js";
-import { getCachedScan, putCachedScan, saveLead } from "./db.js";
+import { getCachedScan, putCachedScan, saveLead, leadsDurable } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -71,7 +71,7 @@ function toReport(snapshot, attribution) {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, psi_key: Boolean(PSI_API_KEY) });
+  res.json({ ok: true, psi_key: Boolean(PSI_API_KEY), leads_durable: leadsDurable() });
 });
 
 app.post("/api/scan", async (req, res) => {

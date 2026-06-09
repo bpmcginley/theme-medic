@@ -69,6 +69,10 @@ export async function saveLead({ email, storeUrl, perfScore }) {
   return memLeads.length;
 }
 
+export function leadsDurable() {
+  return Boolean(pool);
+}
+
 export async function leadCount() {
   if (pool) {
     const { rows } = await pool.query("SELECT COUNT(*)::int AS n FROM leads");
