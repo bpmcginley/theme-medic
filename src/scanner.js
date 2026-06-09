@@ -13,6 +13,11 @@ import { signatures } from "./signatures.js";
 // Binary assets (images, fonts) are skipped for content scanning.
 const TEXT_EXTENSIONS = /\.(liquid|js|css|json|js\.liquid|css\.liquid|scss|html)$/i;
 
+// Translation files are natural language in dozens of languages — app-name words show
+// up by coincidence ("tawk" inside Polish text). Never content-scan them; apps don't
+// inject runtime code into locales.
+const CONTENT_SCAN_EXCLUDE = /^locales\//i;
+
 // Rough per-finding weight model used to estimate performance cost. These are
 // deliberately conservative, sourced from the public guidance that each leftover
 // external script ≈ one extra HTTP request and ~20–200KB, and each app adds
@@ -99,7 +104,7 @@ export function scanTheme(assets, opts = {}) {
 
   for (const asset of assets) {
     const { key, value = "" } = asset;
-    const isText = TEXT_EXTENSIONS.test(key);
+    const isText = TEXT_EXTENSIONS.test(key) && !CONTENT_SCAN_EXCLUDE.test(key);
 
     for (const sig of signatures) {
       // 1) Standalone file dropped by the app (matched on the asset key/path).

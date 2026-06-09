@@ -97,7 +97,7 @@ export const signatures = [
     category: "subscriptions",
     filePatterns: [/(^|\/)recharge[\w.-]*\.(liquid|js|css)$/i, /(^|\/)subscription[_-]?widget[\w.-]*\.(liquid|js|css)$/i],
     scriptHosts: ["rechargecdn.com", "static.rechargecdn.com", "rechargepayments.com"],
-    markers: [/recharge|rechargepayments/i],
+    markers: [/rechargecdn|rechargepayments|rechargeapps|recharge[_-]widget/i],
   },
   {
     id: "vitals",
@@ -223,7 +223,7 @@ export const signatures = [
     category: "email",
     filePatterns: [/(^|\/)attentive[\w.-]*\.(liquid|js|css)$/i],
     scriptHosts: ["attn.tv", "cdn.attn.tv"],
-    markers: [/attn\.tv|attentive/i],
+    markers: [/attn\.tv|attentivemobile|window\.attentive/i],
   },
   {
     id: "omnisend",
@@ -295,7 +295,7 @@ export const signatures = [
     category: "chat",
     filePatterns: [/(^|\/)tawk[\w.-]*\.(liquid|js|css)$/i],
     scriptHosts: ["tawk.to", "embed.tawk.to"],
-    markers: [/tawk/i],
+    markers: [/tawk\.to|Tawk_API/i],
   },
   {
     id: "intercom",
@@ -322,7 +322,7 @@ export const signatures = [
     category: "chat",
     filePatterns: [/(^|\/)(zendesk|zopim)[\w.-]*\.(liquid|js|css)$/i],
     scriptHosts: ["zdassets.com", "zopim.com"],
-    markers: [/zendesk|zopim|zE\(/i],
+    markers: [/zendesk|zopim|zdassets/i],
   },
   {
     id: "lucky-orange",

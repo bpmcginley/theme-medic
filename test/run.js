@@ -68,6 +68,20 @@ const assets = [
     value: `:root{--accent:#111} body{margin:0;font-family:system-ui}`,
   },
   { key: "assets/logo.png", value: "" }, // binary — skipped for content scan
+
+  // --- Real-world false positives caught on a stock Horizon theme (regression) ---
+  {
+    // `resize(` used to match Zendesk's old `zE(` marker.
+    key: "assets/utilities.js",
+    value: `export function onResize(cb){window.addEventListener("resize",()=>cb());}
+const normalized = items.map((i) => normalize(i));`,
+  },
+  {
+    // Polish locale text used to match tawk.to's old `tawk` marker. Locales are
+    // excluded from content scanning entirely.
+    key: "locales/pl.schema.json",
+    value: `{"sections":{"opis":"Zostawkę ustawkę tawkowski przykład tekstu"}}`,
+  },
 ];
 
 // The store currently has ONLY Privy installed. Everything else that matches is ghost.
