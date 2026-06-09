@@ -1,0 +1,18 @@
+# Render deploy config for the Theme Medic free scan tool (M2).
+# FREE plan: $0. No persistent disk (leads live in free Neon Postgres via DATABASE_URL;
+# scan cache is in-memory). The free plan sleeps after ~15 min idle — harmless here,
+# since a scan already takes 20-60s, so a cold start is unnoticeable.
+services:
+  - type: web
+    name: theme-medic-scan
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PSI_API_KEY
+        sync: false # free Google PageSpeed Insights key — needed for scans
+      - key: DATABASE_URL
+        sync: false # free Neon Postgres connection string — durable lead capture

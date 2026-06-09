@@ -1,0 +1,21 @@
+{
+  "name": "theme-medic",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shopify store performance & drift monitor — free scan tool + continuous monitoring. Catches the slow, bloated, app-injected code that quietly costs you sales.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "demo": "node test/run.js",
+    "scan": "node test/scan-live.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

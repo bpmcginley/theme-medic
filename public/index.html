@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theme Medic — Free Shopify Store Speed Scan</title>
+<meta name="description" content="Free scan: see your Shopify store's speed, page weight, and exactly which apps are quietly slowing it down and costing you sales." />
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7ebf2; --muted:#9aa3b2; --accent:#4ade80; --warn:#fbbf24; --bad:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+  .wrap { max-width:760px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:2rem; line-height:1.15; margin:.2em 0; }
+  .sub { color:var(--muted); font-size:1.1rem; }
+  .scanbox { display:flex; gap:8px; margin:24px 0 8px; }
+  input[type=url], input[type=email] { flex:1; padding:14px 16px; border-radius:10px; border:1px solid var(--line); background:#0c0e12; color:var(--text); font-size:1rem; }
+  button { padding:14px 20px; border:0; border-radius:10px; background:var(--accent); color:#06210f; font-weight:700; font-size:1rem; cursor:pointer; white-space:nowrap; }
+  button:disabled { opacity:.55; cursor:default; }
+  .hint { color:var(--muted); font-size:.85rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-top:20px; }
+  .row { display:flex; flex-wrap:wrap; gap:16px; }
+  .metric { flex:1; min-width:120px; }
+  .metric .big { font-size:1.8rem; font-weight:700; }
+  .metric .lbl { color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  th,td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); font-size:.95rem; }
+  th { color:var(--muted); font-weight:600; font-size:.8rem; text-transform:uppercase; letter-spacing:.03em; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:.75rem; background:#0c0e12; border:1px solid var(--line); color:var(--muted); }
+  .good { color:var(--accent); } .mid { color:var(--warn); } .poor { color:var(--bad); }
+  .spinner { display:none; margin:24px 0; color:var(--muted); }
+  .spinner.on { display:block; }
+  .err { color:var(--bad); margin-top:12px; }
+  footer { color:var(--muted); font-size:.85rem; margin-top:40px; border-top:1px solid var(--line); padding-top:20px; }
+  .ok { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Is an app secretly slowing down your store?</h1>
+  <p class="sub">Free scan. See your speed, page weight, and <strong>exactly which apps</strong> are dragging it down — before they cost you more sales.</p>
+
+  <div class="scanbox">
+    <input id="url" type="url" placeholder="yourstore.com" autocomplete="off" />
+    <button id="scanBtn">Scan free</button>
+  </div>
+  <div class="hint">Works on any live Shopify store. No login. Takes ~20–60s (real Google PageSpeed data).</div>
+
+  <div id="spinner" class="spinner">⏳ Loading your store like a real visitor and measuring it… hang tight.</div>
+  <div id="err" class="err"></div>
+
+  <div id="results"></div>
+</div>
+
+<footer>
+  Theme Medic — continuous Shopify store performance &amp; drift monitoring. The free scan is a one-time snapshot; the app re-runs it daily and alerts you the moment an app update slows you down.
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const scoreClass = (s) => s == null ? "" : s >= 90 ? "good" : s >= 50 ? "mid" : "poor";
+const ms = (n) => n == null ? "—" : Math.round(n) + " ms";
+
+async function scan() {
+  const url = $("url").value.trim();
+  $("err").textContent = "";
+  $("results").innerHTML = "";
+  if (!url) { $("err").textContent = "Enter your store URL first."; return; }
+  $("scanBtn").disabled = true;
+  $("spinner").classList.add("on");
+  try {
+    const r = await fetch("/api/scan", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ url }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "Scan failed");
+    render(data);
+  } catch (e) {
+    $("err").textContent = e.message;
+  } finally {
+    $("scanBtn").disabled = false;
+    $("spinner").classList.remove("on");
+  }
+}
+
+function render(d) {
+  const appsRows = (d.apps || []).map(a => `
+    <tr>
+      <td>${a.name} <span class="pill">${a.category}</span></td>
+      <td>${a.weightKb} KB</td>
+      <td>${a.requests}</td>
+      <td>${a.blockingMs ? a.blockingMs + " ms" : "—"}</td>
+    </tr>`).join("");
+
+  const field = d.field ? `
+    <div class="card">
+      <div class="lbl" style="color:var(--muted);font-size:.8rem;text-transform:uppercase;">Real visitors (Google field data) — overall: ${d.field.overall || "n/a"}</div>
+      <div class="row" style="margin-top:8px;">
+        <div class="metric"><div class="big">${ms(d.field.lcpMs)}</div><div class="lbl">LCP (load)</div></div>
+        <div class="metric"><div class="big">${ms(d.field.inpMs)}</div><div class="lbl">INP (responsiveness)</div></div>
+      </div>
+    </div>` : "";
+
+  $("results").innerHTML = `
+    <div class="card">
+      <div class="row">
+        <div class="metric"><div class="big ${scoreClass(d.score)}">${d.score ?? "—"}</div><div class="lbl">Speed score /100</div></div>
+        <div class="metric"><div class="big">${d.pageWeightKb ?? "—"} KB</div><div class="lbl">Page weight</div></div>
+        <div class="metric"><div class="big">${d.requests ?? "—"}</div><div class="lbl">Requests</div></div>
+        <div class="metric"><div class="big">${ms(d.vitals.lcpMs)}</div><div class="lbl">LCP (lab)</div></div>
+      </div>
+    </div>
+    ${field}
+    <div class="card">
+      <h3 style="margin:.2em 0 0;">Apps loading on this page (heaviest first)</h3>
+      <p class="hint">If you've uninstalled any of these, their code is still loading — that's recoverable speed.</p>
+      <table>
+        <thead><tr><th>App</th><th>Weight</th><th>Requests</th><th>Blocking</th></tr></thead>
+        <tbody>${appsRows || `<tr><td colspan="4" class="hint">No known app signatures matched.</td></tr>`}</tbody>
+      </table>
+      ${d.otherThirdPartyKb ? `<p class="hint">+ ${d.otherThirdPartyKb} KB of other third-party scripts.</p>` : ""}
+    </div>
+    <div class="card" id="leadCard">
+      <h3 style="margin:.2em 0 .4em;">Your store changes every week.</h3>
+      <p class="sub" style="font-size:1rem;">Apps auto-update and silently add weight. Get a <strong>free monthly health report</strong> + an alert the moment something slows you down.</p>
+      <div class="scanbox">
+        <input id="email" type="email" placeholder="you@store.com" />
+        <button id="leadBtn">Email me my report</button>
+      </div>
+      <div id="leadMsg" class="hint"></div>
+    </div>`;
+
+  $("leadBtn").addEventListener("click", () => submitLead(d));
+}
+
+async function submitLead(d) {
+  const email = $("email").value.trim();
+  $("leadMsg").textContent = "";
+  if (!email) { $("leadMsg").textContent = "Enter your email."; return; }
+  $("leadBtn").disabled = true;
+  try {
+    const r = await fetch("/api/lead", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ email, url: d.url, perfScore: d.score }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "Could not save");
+    $("leadMsg").innerHTML = `<span class="ok">✓ You're on the list. We'll send your store's health report.</span>`;
+  } catch (e) {
+    $("leadMsg").textContent = e.message;
+  } finally {
+    $("leadBtn").disabled = false;
+  }
+}
+
+$("scanBtn").addEventListener("click", scan);
+$("url").addEventListener("keydown", (e) => { if (e.key === "Enter") scan(); });
+</script>
+</body>
+</html>
