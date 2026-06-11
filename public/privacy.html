@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theme Medic — Privacy Policy</title>
+<style>
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:#0f1115; color:#e7ebf2; line-height:1.6; }
+  .wrap { max-width:760px; margin:0 auto; padding:40px 20px 80px; }
+  h1 { font-size:1.8rem; } h2 { font-size:1.2rem; margin-top:1.8em; }
+  a { color:#4ade80; }
+  .muted { color:#9aa3b2; }
+  code { background:#171a21; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Privacy Policy</h1>
+  <p class="muted">Theme Medic · Last updated: June 2026</p>
+
+  <p>Theme Medic (“we”, “the app”) is a Shopify app and website that helps merchants find
+  leftover app code in their store theme and monitor store performance. This policy
+  explains what data we access, why, and how we handle it. We collect as little as
+  possible and never sell your data.</p>
+
+  <h2>What we access</h2>
+  <ul>
+    <li><strong>Your store domain and basic shop info</strong> — to identify your account and authenticate the app.</li>
+    <li><strong>Your theme files</strong> (via Shopify’s <code>read_themes</code> permission) — read-only. We scan theme code to detect app footprints and ghost code. We do not modify your theme.</li>
+    <li><strong>Your public storefront HTML</strong> — we load your storefront like any visitor to check which app scripts actually run, so we can tell active apps from dead code.</li>
+  </ul>
+  <p>We do <strong>not</strong> access your customers, orders, products, or payment
+  information. Theme Medic requests no customer-data scopes.</p>
+
+  <h2>What we store</h2>
+  <ul>
+    <li>An authentication session token for your store (required to run the app).</li>
+    <li>Compact <strong>scan summaries</strong> (which apps had leftover code, counts, sizes) so daily monitoring can detect new issues over time. We do not store full copies of your theme.</li>
+    <li>Your <strong>monitoring settings</strong> — the alert email address you choose, if any.</li>
+    <li>A count of scans, to enforce plan limits.</li>
+  </ul>
+
+  <h2>Third parties</h2>
+  <ul>
+    <li><strong>Google PageSpeed Insights</strong> — our free website scan tool sends the public store URL you enter to Google’s PageSpeed Insights API to measure load performance. See Google’s privacy policy.</li>
+    <li><strong>Resend</strong> — if you enable monitoring alerts, we use Resend to deliver alert emails to the address you provide.</li>
+    <li><strong>Shopify</strong> — billing and authentication are handled by Shopify.</li>
+  </ul>
+  <p>We share data with these processors only as needed to provide the service.</p>
+
+  <h2>Data retention &amp; deletion</h2>
+  <p>When you uninstall the app, your session is revoked and your stored data is
+  deleted. You can also request deletion at any time by emailing us. Scan summaries are
+  kept only while the app is installed.</p>
+
+  <h2>Email us</h2>
+  <p>Questions or deletion requests: <a href="mailto:support@thememedic.app">support@thememedic.app</a></p>
+
+  <p class="muted"><a href="/">← Back to Theme Medic</a> · <a href="/terms.html">Terms of Service</a></p>
+</div>
+</body>
+</html>
