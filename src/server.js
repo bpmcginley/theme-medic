@@ -12,7 +12,9 @@ import { fileURLToPath } from "node:url";
 
 import { collectMetrics } from "./metrics.js";
 import { attributeResources } from "./attribute.js";
-import { getCachedScan, putCachedScan, saveLead, leadsDurable } from "./db.js";
+import { getCachedScan, putCachedScan, saveLead, leadsDurable, recordAppStat, getAppStat } from "./db.js";
+import { signatures } from "./signatures.js";
+import { renderAppPage, renderAppIndexPage, renderSitemap } from "./pages.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -57,6 +59,7 @@ function toReport(snapshot, attribution) {
         }
       : null,
     apps: attribution.apps.map((a) => ({
+      appId: a.appId,
       name: a.app,
       category: a.category,
       weightKb: Math.round(a.bytes / 1024),
@@ -87,6 +90,12 @@ app.post("/api/scan", async (req, res) => {
     const report = toReport(snapshot, attribution);
 
     putCachedScan(url, report);
+    for (const a of report.apps) {
+      if (!a.appId) continue;
+      recordAppStat({ appId: a.appId, weightKb: a.weightKb, requests: a.requests, blockingMs: a.blockingMs }).catch(
+        (e) => console.error("recordAppStat failed:", e.message),
+      );
+    }
     res.json({ ...report, cached: false });
   } catch (err) {
     const quota = /\b429\b/.test(err.message);
@@ -115,6 +124,23 @@ app.post("/api/lead", async (req, res) => {
     console.error("saveLead failed:", err.message);
     res.status(500).json({ error: "Could not save right now — try again." });
   }
+});
+
+// Programmatic SEO: one page per app in the signature DB (SHIP_PLAN.md 4.3).
+app.get("/apps", (_req, res) => {
+  res.type("html").send(renderAppIndexPage(signatures));
+});
+
+app.get("/apps/:id", async (req, res) => {
+  const sig = signatures.find((s) => s.id === req.params.id);
+  if (!sig) return res.status(404).type("html").send("<p>App not found. <a href=\"/apps\">Browse all apps</a>.</p>");
+  const stat = await getAppStat(sig.id).catch(() => null);
+  res.type("html").send(renderAppPage(sig, stat));
+});
+
+app.get("/sitemap.xml", (req, res) => {
+  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  res.type("application/xml").send(renderSitemap(baseUrl, signatures));
 });
 
 app.listen(PORT, () => {

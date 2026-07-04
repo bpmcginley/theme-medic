@@ -3,8 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Theme Medic — Free Shopify Store Speed Scan</title>
+<title>Theme Medic — Free Shopify Store Speed Scan &amp; App Bloat Checker</title>
 <meta name="description" content="Free scan: see your Shopify store's speed, page weight, and exactly which apps are quietly slowing it down and costing you sales." />
+<meta name="keywords" content="shopify store speed test, shopify app bloat, shopify ghost code, shopify page speed checker, shopify theme cleanup" />
+<meta property="og:title" content="Theme Medic — Free Shopify Store Speed Scan" />
+<meta property="og:description" content="See your Shopify store's speed, page weight, and exactly which apps are quietly slowing it down." />
+<meta property="og:type" content="website" />
+<link rel="canonical" href="https://theme-medic-scan.onrender.com/" />
 <style>
   :root { --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7ebf2; --muted:#9aa3b2; --accent:#4ade80; --warn:#fbbf24; --bad:#f87171; }
   * { box-sizing:border-box; }
@@ -54,6 +59,7 @@
 <footer>
   Theme Medic — continuous Shopify store performance &amp; drift monitoring. The free scan is a one-time snapshot; the app re-runs it daily and alerts you the moment an app update slows you down.
   <br /><br />
+  <a href="/apps" style="color:var(--muted)">Browse tracked apps</a> ·
   <a href="/privacy.html" style="color:var(--muted)">Privacy Policy</a> ·
   <a href="/terms.html" style="color:var(--muted)">Terms of Service</a>
 </footer>
@@ -119,7 +125,9 @@ function render(d) {
         <tbody>${appsRows || `<tr><td colspan="4" class="hint">No known app signatures matched.</td></tr>`}</tbody>
       </table>
       ${d.otherThirdPartyKb ? `<p class="hint">+ ${d.otherThirdPartyKb} KB of other third-party scripts.</p>` : ""}
+      <p class="hint"><a href="/apps">Browse all 60 apps we track &rarr;</a></p>
     </div>
+    ${installCta}
     <div class="card" id="leadCard">
       <h3 style="margin:.2em 0 .4em;">Your store changes every week.</h3>
       <p class="sub" style="font-size:1rem;">Apps auto-update and silently add weight. Get a <strong>free monthly health report</strong> + an alert the moment something slows you down.</p>
@@ -132,6 +140,13 @@ function render(d) {
 
   $("leadBtn").addEventListener("click", () => submitLead(d));
 }
+
+const installCta = `
+    <div class="card" style="border-color:var(--accent);">
+      <h3 style="margin:.2em 0;">Want this checked automatically?</h3>
+      <p class="sub" style="font-size:1rem;">The <strong>Theme Medic</strong> Shopify app installs in one click, re-scans your store every day, and tells you the moment a new app leaves dead code behind — no need to come back and re-scan manually.</p>
+      <p class="hint">Coming soon to the Shopify App Store. Drop your email below and we'll notify you the day it's live.</p>
+    </div>`;
 
 async function submitLead(d) {
   const email = $("email").value.trim();

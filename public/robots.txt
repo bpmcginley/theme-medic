@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://theme-medic-scan.onrender.com/sitemap.xml
