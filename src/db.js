@@ -81,6 +81,70 @@ export async function leadCount() {
   return memLeads.length;
 }
 
+// ---- Funnel events (Postgres or in-memory fallback) ------------------------
+// Coarse conversion tracking: how many real scans turn into captured leads. No
+// third-party analytics account needed — just counts against the DB we already have.
+const memFunnelEvents = []; // { type, at }
+
+if (pool) {
+  pool
+    .query(
+      `CREATE TABLE IF NOT EXISTS funnel_events (
+         id         SERIAL PRIMARY KEY,
+         type       TEXT NOT NULL,
+         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+       )`,
+    )
+    .catch((e) => console.error("funnel_events table init failed:", e.message));
+}
+
+export async function recordFunnelEvent(type) {
+  if (pool) {
+    await pool.query("INSERT INTO funnel_events (type) VALUES ($1)", [type]);
+    return;
+  }
+  memFunnelEvents.push({ type, at: new Date().toISOString() });
+}
+
+export async function getFunnelStats() {
+  const since = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  if (pool) {
+    const { rows } = await pool.query(
+      `SELECT type, COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE created_at > now() - interval '1 day')::int AS last_24h,
+              COUNT(*) FILTER (WHERE created_at > now() - interval '7 days')::int AS last_7d
+       FROM funnel_events GROUP BY type`,
+    );
+    const byType = Object.fromEntries(
+      rows.map((r) => [r.type, { total: r.total, last24h: r.last_24h, last7d: r.last_7d }]),
+    );
+    return finishFunnelStats(byType);
+  }
+
+  const byType = {};
+  for (const ev of memFunnelEvents) {
+    const bucket = byType[ev.type] ?? { total: 0, last24h: 0, last7d: 0 };
+    bucket.total += 1;
+    if (ev.at > since(1)) bucket.last24h += 1;
+    if (ev.at > since(7)) bucket.last7d += 1;
+    byType[ev.type] = bucket;
+  }
+  return finishFunnelStats(byType);
+}
+
+function finishFunnelStats(byType) {
+  const scans = byType.scan ?? { total: 0, last24h: 0, last7d: 0 };
+  const leads = byType.lead ?? { total: 0, last24h: 0, last7d: 0 };
+  const pct = (n, d) => (d > 0 ? Math.round((n / d) * 1000) / 10 : null);
+  return {
+    scans,
+    leads,
+    conversionPct: pct(leads.total, scans.total),
+    conversionPct7d: pct(leads.last7d, scans.last7d),
+  };
+}
+
 // ---- Per-app attribution stats (Postgres or in-memory fallback) -----------
 // Aggregated across every real (non-cached) scan, so the "measured impact" shown
 // on /apps/:id pages is real data, not a guess — it just starts at n=0 and grows.

@@ -12,9 +12,19 @@ import { fileURLToPath } from "node:url";
 
 import { collectMetrics } from "./metrics.js";
 import { attributeResources } from "./attribute.js";
-import { getCachedScan, putCachedScan, saveLead, leadsDurable, recordAppStat, getAppStat } from "./db.js";
+import {
+  getCachedScan,
+  putCachedScan,
+  saveLead,
+  leadsDurable,
+  recordAppStat,
+  getAppStat,
+  recordFunnelEvent,
+  getFunnelStats,
+} from "./db.js";
+import { sendReportEmail } from "./email.js";
 import { signatures } from "./signatures.js";
-import { renderAppPage, renderAppIndexPage, renderSitemap } from "./pages.js";
+import { renderAppPage, renderAppIndexPage, renderSitemap, renderGuidePage, GUIDES } from "./pages.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -96,6 +106,7 @@ app.post("/api/scan", async (req, res) => {
         (e) => console.error("recordAppStat failed:", e.message),
       );
     }
+    recordFunnelEvent("scan").catch((e) => console.error("recordFunnelEvent(scan) failed:", e.message));
     res.json({ ...report, cached: false });
   } catch (err) {
     const quota = /\b429\b/.test(err.message);
@@ -113,16 +124,41 @@ app.post("/api/lead", async (req, res) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return res.status(400).json({ error: "Enter a valid email." });
   }
+  const storeUrl = normalizeUrl(req.body?.url) ?? null;
+  const perfScore = Number.isInteger(req.body?.perfScore) ? req.body.perfScore : null;
   try {
-    const id = await saveLead({
-      email,
-      storeUrl: normalizeUrl(req.body?.url) ?? null,
-      perfScore: Number.isInteger(req.body?.perfScore) ? req.body.perfScore : null,
-    });
+    const id = await saveLead({ email, storeUrl, perfScore });
+    recordFunnelEvent("lead").catch((e) => console.error("recordFunnelEvent(lead) failed:", e.message));
+
+    // Fire-and-forget: send the report immediately using this scan's cached data
+    // (same TTL as the UI's own re-render), so the "email me my report" promise is
+    // actually delivered rather than just stored. No-ops silently until an email
+    // provider key is configured (see src/email.js).
+    if (storeUrl) {
+      const cached = getCachedScan(storeUrl);
+      sendReportEmail(email, { url: storeUrl, score: perfScore ?? cached?.score ?? null, apps: cached?.apps ?? [] }).catch(
+        (e) => console.error("sendReportEmail failed:", e.message),
+      );
+    }
+
     res.json({ ok: true, id });
   } catch (err) {
     console.error("saveLead failed:", err.message);
     res.status(500).json({ error: "Could not save right now — try again." });
+  }
+});
+
+// Aggregate funnel counts for the founder to check conversion — no PII, optionally
+// gated by INTERNAL_STATS_KEY if set (so it's not left wide open once traffic exists).
+app.get("/internal/funnel-stats", async (req, res) => {
+  const requiredKey = process.env.INTERNAL_STATS_KEY;
+  if (requiredKey && req.query.key !== requiredKey) {
+    return res.status(404).end();
+  }
+  try {
+    res.json(await getFunnelStats());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -136,6 +172,12 @@ app.get("/apps/:id", async (req, res) => {
   if (!sig) return res.status(404).type("html").send("<p>App not found. <a href=\"/apps\">Browse all apps</a>.</p>");
   const stat = await getAppStat(sig.id).catch(() => null);
   res.type("html").send(renderAppPage(sig, stat));
+});
+
+app.get("/guides/:slug", (req, res) => {
+  const guide = GUIDES.find((g) => g.slug === req.params.slug);
+  if (!guide) return res.status(404).type("html").send("<p>Guide not found. <a href=\"/\">Back home</a>.</p>");
+  res.type("html").send(renderGuidePage(guide));
 });
 
 app.get("/sitemap.xml", (req, res) => {

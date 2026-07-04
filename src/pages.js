@@ -104,6 +104,40 @@ $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") scan(); });
 `;
 }
 
+// Plain scan widget with no per-app framing, for guide pages.
+function genericScanWidgetScript() {
+  return `
+const $ = (id) => document.getElementById(id);
+async function scan() {
+  const url = $("url").value.trim();
+  $("err").textContent = "";
+  $("results").innerHTML = "";
+  if (!url) { $("err").textContent = "Enter your store URL first."; return; }
+  $("scanBtn").disabled = true;
+  $("spinner").classList.add("on");
+  try {
+    const r = await fetch("/api/scan", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ url }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "Scan failed");
+    render(data);
+  } catch (e) {
+    $("err").textContent = e.message;
+  } finally {
+    $("scanBtn").disabled = false;
+    $("spinner").classList.remove("on");
+  }
+}
+function render(d) {
+  const rows = (d.apps || []).map(a => '<tr><td>' + a.name + ' <span class="pill">' + a.category + '</span></td><td>' + a.weightKb + ' KB</td><td>' + a.requests + '</td><td>' + (a.blockingMs ? a.blockingMs + ' ms' : '—') + '</td></tr>').join('');
+  $("results").innerHTML = '<div class="card"><h3 style="margin:.2em 0 0;">Speed score: ' + (d.score ?? '—') + '/100 · ' + (d.pageWeightKb ?? '—') + ' KB · ' + (d.requests ?? '—') + ' requests</h3>' +
+    (rows ? '<table style="width:100%;border-collapse:collapse;margin-top:12px;"><thead><tr><th style="text-align:left;color:var(--muted);font-size:.8rem;">Apps found</th><th></th><th></th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p class="hint">No known app signatures matched.</p>') +
+    '<p class="hint" style="margin-top:12px;"><a href="/">Full scan report &amp; app cleanup guide &rarr;</a></p></div>';
+}
+$("scanBtn").addEventListener("click", scan);
+$("url").addEventListener("keydown", (e) => { if (e.key === "Enter") scan(); });
+`;
+}
+
 export function renderAppPage(sig, stat) {
   const catLabel = categoryLabel(sig.category);
   const title = `Does ${sig.name} slow down your Shopify store? — Theme Medic`;
@@ -209,7 +243,7 @@ ${JSON.stringify({
   <footer>
     Theme Medic — Shopify store performance &amp; app-bloat monitoring.
     <br /><br />
-    <a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a>
+    <a href="/guides/shopify-ghost-code">Ghost code guide</a> · <a href="/guides/shopify-page-speed-checklist">Speed checklist</a> · <a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a>
   </footer>
 </div>
 <script>${scanWidgetScript(sig.name)}</script>
@@ -273,11 +307,114 @@ ${JSON.stringify({
 </html>`;
 }
 
+export const GUIDES = [
+  {
+    slug: "shopify-ghost-code",
+    title: "Shopify Ghost Code: What It Is and How to Find It",
+    description:
+      "Uninstalling a Shopify app doesn't remove the code it added to your theme. Here's what that leftover 'ghost code' looks like and how to track it down.",
+    paragraphs: [
+      `<p>Every Shopify app you install works by injecting code into your theme — a script tag, a snippet in <code>theme.liquid</code>, sometimes a whole app block. Shopify's uninstall flow removes the <em>app</em> from your admin, but it was never designed to reliably undo every edit that app made to your theme files. The result is what we call <strong>ghost code</strong>: script tags and snippets that keep loading on every page, forever, for an app you don't even use anymore.</p>`,
+      `<h2>Why this happens</h2>
+       <p>Most Shopify apps install in one of a few ways: a Script Tag registered through the Shopify API, a snippet added to your theme's <code>theme.liquid</code> or section files, or an app embed block through the theme editor. Script Tags are supposed to be removed automatically on uninstall — but that only happens if the app's uninstall webhook fires correctly and Shopify processes it. Snippets manually pasted into theme files are never removed automatically, because Shopify has no way of knowing which lines belong to which app.</p>`,
+      `<h2>How to find it yourself</h2>
+       <p>Without tooling, finding ghost code means going through your theme's code editor by hand: search <code>theme.liquid</code> and your main layout files for <code>&lt;script&gt;</code> tags referencing domains you don't recognize, then cross-reference each one against your current list of installed apps in the Shopify admin. Anything referencing an app you've uninstalled is a candidate for removal — but be careful, since some legitimate scripts (Shopify's own analytics, your theme's core JS) can look unfamiliar out of context.</p>
+       <p>The faster way: run a free scan at <a href="/">Theme Medic</a>. It loads your storefront the way a real visitor would, matches every script and asset against a database of 60+ common Shopify apps, and tells you which ones are still active vs. left-behind ghost code — along with exactly how much page weight and how many extra requests each one costs you.</p>`,
+      `<h2>Why it's worth cleaning up</h2>
+       <p>Ghost code isn't just clutter — it's live JavaScript executing on every page load, competing for the same main thread as your theme's own code and anything a real customer is trying to do (like checking out). Removing it is one of the few page-speed fixes that's pure upside: no functionality lost, because the app it belonged to is already gone.</p>`,
+    ],
+  },
+  {
+    slug: "shopify-page-speed-checklist",
+    title: "Shopify Page Speed Checklist: What to Check Before You Blame the Theme",
+    description:
+      "A practical checklist for diagnosing a slow Shopify store — most of the time it isn't the theme, it's what's been installed on top of it.",
+    paragraphs: [
+      `<p>"My store feels slow" almost always gets blamed on the theme first. In practice, a fresh theme install is rarely the bottleneck — it's usually the accumulation of apps, scripts, and images layered on top of it over time. Here's a practical order to check things in.</p>`,
+      `<h2>1. Measure before you guess</h2>
+       <p>Start with real data, not a stopwatch. Google's PageSpeed Insights (which powers <a href="/">Theme Medic</a>'s free scan) gives you a lab score plus, for stores with enough traffic, real-world field data from actual visitors — Largest Contentful Paint (LCP), Interaction to Next Paint (INP), and Cumulative Layout Shift (CLS).</p>`,
+      `<h2>2. Audit every installed app</h2>
+       <p>Each app you've installed adds its own scripts. Some are lightweight; others load megabytes of unused JS on every page regardless of whether that page needs it. Go through Settings → Apps and ask, for each one: is this still earning its keep in conversion or retention terms, relative to the weight it adds?</p>`,
+      `<h2>3. Check for ghost code from uninstalled apps</h2>
+       <p>See <a href="/guides/shopify-ghost-code">our full guide on Shopify ghost code</a> — apps you've already uninstalled can still be loading code on every page.</p>`,
+      `<h2>4. Look at image weight</h2>
+       <p>Uncompressed product photography is one of the most common causes of a heavy homepage or collection page. Shopify serves responsive image sizes automatically in most themes, but manually uploaded banner images and hero graphics often bypass that and load full-resolution.</p>`,
+      `<h2>5. Count your third-party scripts</h2>
+       <p>Pixel trackers, chat widgets, review pop-ups, upsell bars — each is a separate request, and several block rendering until they load. A store that's accumulated five or six of these over a year can easily be carrying more third-party JS than first-party.</p>`,
+      `<h2>6. Re-check after every app change</h2>
+       <p>Installing or updating an app can silently add weight overnight — most merchants find out only when a customer complains. That's the gap <a href="/">Theme Medic</a>'s Shopify app is built to close: it re-scans your store daily and tells you the moment a specific app's footprint changed.</p>`,
+    ],
+  },
+];
+
+export function renderGuidePage(guide) {
+  const url = `https://theme-medic-scan.onrender.com/guides/${guide.slug}`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${escapeHtml(guide.title)} — Theme Medic</title>
+<meta name="description" content="${escapeHtml(guide.description)}" />
+<meta property="og:title" content="${escapeHtml(guide.title)}" />
+<meta property="og:description" content="${escapeHtml(guide.description)}" />
+<meta property="og:type" content="article" />
+<link rel="canonical" href="${url}" />
+<script type="application/ld+json">
+${JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: guide.title,
+  description: guide.description,
+  url,
+  publisher: { "@type": "Organization", name: "Theme Medic" },
+})}
+</script>
+<script type="application/ld+json">
+${JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Theme Medic", item: "https://theme-medic-scan.onrender.com/" },
+    { "@type": "ListItem", position: 2, name: guide.title, item: url },
+  ],
+})}
+</script>
+<style>${STYLE}</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint"><a href="/">&larr; Free scan tool</a></p>
+  <h1>${escapeHtml(guide.title)}</h1>
+  ${guide.paragraphs.join("\n")}
+  <div class="card">
+    <h2 style="margin-top:0;">Check your own store</h2>
+    <p class="hint">Paste your store URL — free, instant, real Google PageSpeed data.</p>
+    <div class="scanbox">
+      <input id="url" type="url" placeholder="yourstore.com" autocomplete="off" />
+      <button id="scanBtn">Scan free</button>
+    </div>
+    <div id="spinner" class="spinner">⏳ Loading your store like a real visitor and measuring it…</div>
+    <div id="err" class="err"></div>
+    <div id="results"></div>
+  </div>
+  <footer>
+    Theme Medic — Shopify store performance &amp; app-bloat monitoring.
+    <br /><br />
+    <a href="/apps">Browse tracked apps</a> · <a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a>
+  </footer>
+</div>
+<script>${genericScanWidgetScript()}</script>
+</body>
+</html>`;
+}
+
 export function renderSitemap(baseUrl, signatures) {
   const urls = [
     `${baseUrl}/`,
     `${baseUrl}/apps`,
     ...signatures.map((s) => `${baseUrl}/apps/${s.id}`),
+    ...GUIDES.map((g) => `${baseUrl}/guides/${g.slug}`),
   ];
   const body = urls.map((u) => `  <url><loc>${escapeHtml(u)}</loc></url>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>`;
