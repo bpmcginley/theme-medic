@@ -146,6 +146,41 @@ export function renderAppPage(sig, stat) {
 <meta property="og:description" content="${escapeHtml(description)}" />
 <meta property="og:type" content="website" />
 <link rel="canonical" href="https://theme-medic-scan.onrender.com/apps/${sig.id}" />
+<script type="application/ld+json">
+${JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Theme Medic", item: "https://theme-medic-scan.onrender.com/" },
+    { "@type": "ListItem", position: 2, name: "Apps", item: "https://theme-medic-scan.onrender.com/apps" },
+    { "@type": "ListItem", position: 3, name: sig.name, item: `https://theme-medic-scan.onrender.com/apps/${sig.id}` },
+  ],
+})}
+</script>
+<script type="application/ld+json">
+${JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: `Does ${sig.name} slow down my Shopify store?`,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: `${sig.name} adds its own scripts and assets to every page load, like any Shopify app. The actual cost varies by store — scan your store free at Theme Medic to see the real page weight, request count, and blocking time it adds on your theme.`,
+      },
+    },
+    {
+      "@type": "Question",
+      name: `If I uninstall ${sig.name}, does its code get removed automatically?`,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: `Usually not. Uninstalling a Shopify app removes the app itself, but code it already injected into your theme (in theme files or settings) typically stays behind as "ghost code" until someone removes it manually.`,
+      },
+    },
+  ],
+})}
+</script>
 <style>${STYLE}</style>
 </head>
 <body>
@@ -208,6 +243,18 @@ export function renderAppIndexPage(signatures) {
 <title>60 Shopify apps that can slow your store — Theme Medic</title>
 <meta name="description" content="Browse real page-weight and load-time data for 60 common Shopify apps (reviews, email, upsell, chat, and more). See which ones are quietly costing you speed." />
 <link rel="canonical" href="https://theme-medic-scan.onrender.com/apps" />
+<script type="application/ld+json">
+${JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  itemListElement: signatures.map((s, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: s.name,
+    url: `https://theme-medic-scan.onrender.com/apps/${s.id}`,
+  })),
+})}
+</script>
 <style>${STYLE}</style>
 </head>
 <body>
