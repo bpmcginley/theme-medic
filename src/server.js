@@ -84,7 +84,12 @@ function toReport(snapshot, attribution) {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, psi_key: Boolean(PSI_API_KEY), leads_durable: leadsDurable() });
+  res.json({
+    ok: true,
+    psi_key: Boolean(PSI_API_KEY),
+    leads_durable: leadsDurable(),
+    email_configured: Boolean(process.env.RESEND_API_KEY && process.env.LEAD_FROM_EMAIL),
+  });
 });
 
 app.post("/api/scan", async (req, res) => {
